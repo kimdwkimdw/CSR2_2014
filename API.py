@@ -155,8 +155,6 @@ class CSR2_Scheduler(object):
         self.ad = ad['data']
         self.media = media['data']
         self.turn = turn
-        logger.info(media)
-        logger.info(ad)
 
         #load schedule by turn
 
@@ -254,7 +252,7 @@ class CSR2_Scheduler(object):
             for ad_idx in ad_count_dict:
                 ad_result.append({
                     "adNo": self.ad[ad_idx]["adNo"],
-                    "putCount": ad_count_dict[ad_idx]
+                    "putCount": int(ad_count_dict[ad_idx]),
                 })
 
             return ad_result  # todo
@@ -276,7 +274,7 @@ class CSR2_Scheduler(object):
         logger.info("validate")
         api.reqAdList(False)
         with open(AD_PATH % self.turn) as f:
-            new_ad = json.loads(f.readline().strip())['data']
+            new_ad = json.loads(f.readline().strip())["data"]
 
         equality = self.ad == new_ad
         logger.info("self.ad " + str(self.ad))
