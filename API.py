@@ -39,8 +39,10 @@ class CSR2_API(object):
         req.add_header('X-Auth-Token', self.token)
 
         r = None
+        start_time = time.time()
         while True:
             try:
+                start_time = time.time()
                 r = urllib2.urlopen(req)
             except urllib2.HTTPError:
                 logger.exception("HTTPError", exc_info=True)
@@ -55,10 +57,13 @@ class CSR2_API(object):
                 if result['error']['code'] == 40010 or \
                    result['error']['code'] == 40011:
                     logger.info("ERROR %d" % str(result['error']['code']))
-                    time.sleep(0.25)
+                    to_be_sleep_time = max(0.2 - (time.time() - start_time), 0)
+                    time.sleep(to_be_sleep_time)
                     continue
             break
-        time.sleep(0.20)
+
+        to_be_sleep_time = max(0.205 - (time.time() - start_time), 0)
+        time.sleep(to_be_sleep_time)
         logger.info("sendReq" + json.dumps(result))
         return result
 
@@ -215,10 +220,12 @@ class CSR2_Scheduler(object):
                 len_paid_ad = xrange(len(paid_ad_idx_list))
                 random_choice = np.random.choice(len_paid_ad, paid_ad_cnt)
                 random_choice = np.bincount(random_choice)
-
+                to_be_removed = []
                 for random_idx, v in enumerate(random_choice):
                     selected_idx = paid_ad_idx_list[random_idx]
-                    if self.ad[selected_idx]["impressionCount"] >= v:
+                    if self.ad[selected_idx]["impressionCount"] == 0:
+                        continue
+                    elif self.ad[selected_idx]["impressionCount"] >= v:
                         ad_cnt_diff = v
                     else:
                         ad_cnt_diff = self.ad[selected_idx]["impressionCount"]
@@ -228,16 +235,21 @@ class CSR2_Scheduler(object):
                     paid_ad_cnt -= ad_cnt_diff
 
                     if self.ad[selected_idx]["impressionCount"] == 0:
-                        paid_ad_idx_list.remove(selected_idx)
+                        to_be_removed.append(selected_idx)
+
+                for ridx in to_be_removed:
+                    paid_ad_idx_list.remove(ridx)
 
             while free_ad_cnt > 0 and len(free_ad_idx_list) > 0:
                 len_free_ad = xrange(len(free_ad_idx_list))
                 random_choice = np.random.choice(len_free_ad, free_ad_cnt)
                 random_choice = np.bincount(random_choice)
-
+                to_be_removed = []
                 for random_idx, v in enumerate(random_choice):
                     selected_idx = free_ad_idx_list[random_idx]
-                    if self.ad[selected_idx]["impressionCount"] >= v:
+                    if self.ad[selected_idx]["impressionCount"] == 0:
+                        continue
+                    elif self.ad[selected_idx]["impressionCount"] >= v:
                         ad_cnt_diff = v
                     else:
                         ad_cnt_diff = self.ad[selected_idx]["impressionCount"]
@@ -247,7 +259,10 @@ class CSR2_Scheduler(object):
                     free_ad_cnt -= ad_cnt_diff
 
                     if self.ad[selected_idx]["impressionCount"] == 0:
-                        free_ad_idx_list.remove(selected_idx)
+                        to_be_removed.append(selected_idx)
+
+                for ridx in to_be_removed:
+                    free_ad_idx_list.remove(ridx)
 
             for ad_idx in ad_count_dict:
                 ad_result.append({
@@ -351,4 +366,3 @@ while True:
                 f.write(str(current_turn))
 
     tryMain(current_turn)
-    break
