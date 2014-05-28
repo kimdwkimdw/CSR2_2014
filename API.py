@@ -45,7 +45,7 @@ class CSR2_API(object):
         while True:
             try:
                 cur = time.time()
-                to_be_sleep_time = max(0.26 - (cur - self.p_req_time), 0)
+                to_be_sleep_time = max(0.25 - (cur - self.p_req_time), 0)
                 logger.info("TIME %f %f" % (cur - self.p_req_time,
                                             cur - self.p_compute_time))
                 time.sleep(to_be_sleep_time)
@@ -756,14 +756,14 @@ class CSR2_Scheduler(object):
                     free_ad_idx_list.append(idx)
 
         def get_next_add(fill_rate, max_impression_count, mediaNo, seqNum):
-            prev_ratio_ll = self.prev_media_ratio[-3:]
+            prev_ratio_ll = self.prev_media_ratio[-10:]
             media_ratio_detail_max = np.max([ratio_elem[mediaNo]
                                              for ratio_elem in prev_ratio_ll])
             media_ratio_detail_min = np.min([ratio_elem[mediaNo]
                                              for ratio_elem in prev_ratio_ll])
             media_ratio = self.prev_media_ratio[-1][mediaNo]
             if media_ratio >= 0.04:
-                if media_ratio_detail_max >= 0.060 \
+                if media_ratio_detail_max > 0.060 \
                    and media_ratio_detail_min >= 0.050:
                     req_item_list = range(1, 5) + \
                         range(5, 9) + \
@@ -772,18 +772,24 @@ class CSR2_Scheduler(object):
                 else:
                     req_item_list = range(5, 9) + \
                         range(13, 17) + \
+                        range(1, 5) + \
                         range(17, 21)
             elif media_ratio >= 0.02:
                 req_item_list = range(13, 17) + \
                     range(17, 21) + \
                     range(5, 9)
+                if seqNum > 9000:
+                    req_item_list = range(13, 17) + \
+                        range(1, 5) + \
+                        range(17, 21) + \
+                        range(5, 9)
             else:
                 req_item_list = range(17, 21)
 
             ad_result = []
             real_paid_ad_cnt = int(max_impression_count * fill_rate / 100.0)
             if media_ratio <= 0.0006:
-                real_paid_ad_cnt = int(real_paid_ad_cnt * 0.7)
+                real_paid_ad_cnt = int(real_paid_ad_cnt * 0.9)
             elif media_ratio <= 0.0011:
                 real_paid_ad_cnt = int(real_paid_ad_cnt)
 
@@ -921,9 +927,10 @@ def tryMain(turn):
                 tester_scheduler.prev_media_ratio.append(
                     tester_scheduler.calculate_media_ratio(next_schedule,
                                                            current_result))
-                with open("prev_media_ratio_%d.pk" % turn, "wb") as output:
-                    pickle.dump(tester_scheduler.prev_media_ratio, output,
-                                pickle.HIGHEST_PROTOCOL)
+                if i % 100 == 0:
+                    with open("prev_media_ratio_%d.pk" % turn, "wb") as output:
+                        pickle.dump(tester_scheduler.prev_media_ratio, output,
+                                    pickle.HIGHEST_PROTOCOL)
                 break
         if current_seq == END_SEQ:
             break
@@ -935,6 +942,7 @@ def tryMain(turn):
 
 
 tester = CSR2_API("e2e0b5ee4f5f18bd29d17b704223a5de")
+
 with open("current_turn", "r") as f:
     current_turn = int(f.readline())
 
